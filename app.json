@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Fundi3",
+    "slug": "fundi3-mobile",
+    "scheme": "fundi3",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0F0E",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "xyz.fundi3.mobile"
+    },
+    "android": {
+      "package": "xyz.fundi3.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0F0E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-sharing"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
