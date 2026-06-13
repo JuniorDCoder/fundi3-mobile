@@ -1,6 +1,8 @@
 import { Dimensions, Image } from "react-native";
 import Markdown, { RenderRules } from "react-native-markdown-display";
+import { SvgUri } from "react-native-svg";
 import { brand, fonts } from "../../lib/theme/brand";
+import { resolveAssetUrl, isSvgUrl } from "../../lib/utils/assets";
 
 const { width: screenWidth } = Dimensions.get("window");
 const contentWidth = screenWidth - 40; // 2 × 20px horizontal padding
@@ -151,19 +153,36 @@ const markdownStyles = {
 };
 
 const imageRules: RenderRules = {
-  image: (node) => (
-    <Image
-      key={node.key}
-      source={{ uri: node.attributes.src }}
-      style={{
-        width: contentWidth,
-        height: contentWidth * (9 / 16),
-        borderRadius: 8,
-        marginVertical: 10,
-      }}
-      resizeMode="contain"
-    />
-  ),
+  image: (node) => {
+    const resolved = resolveAssetUrl(node.attributes.src);
+    const imageHeight = contentWidth * (9 / 16);
+
+    if (isSvgUrl(resolved)) {
+      return (
+        <SvgUri
+          key={node.key}
+          uri={resolved}
+          width={contentWidth}
+          height={imageHeight}
+          style={{ marginVertical: 10, alignSelf: "center" }}
+        />
+      );
+    }
+
+    return (
+      <Image
+        key={node.key}
+        source={{ uri: resolved }}
+        style={{
+          width: contentWidth,
+          height: imageHeight,
+          borderRadius: 8,
+          marginVertical: 10,
+        }}
+        resizeMode="contain"
+      />
+    );
+  },
 };
 
 interface Props {

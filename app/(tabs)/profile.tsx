@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "expo-router";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 import { Award, ChevronRight, GraduationCap, Globe, LogOut, Mail, Sparkles, FileBadge, User as UserIcon } from "lucide-react-native";
 import { Button } from "../../components/ui/Button";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { Switch } from "../../components/ui/Switch";
+import { GitHubIcon } from "../../components/ui/icons";
 import { brand, fonts, glass } from "../../lib/theme/brand";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -16,6 +17,7 @@ import {
   saveNotificationPreferences,
   type NotificationPreferences,
 } from "../../lib/user/api";
+import { getGithubStatus, disconnectGithub, type GithubStatus } from "../../lib/github/api";
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   emailCourseCompleted: true,
@@ -37,6 +39,9 @@ export default function ProfileScreen() {
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [githubStatus, setGithubStatus] = useState<GithubStatus | null>(null);
+  const [githubBusy, setGithubBusy] = useState(false);
+
   const load = useCallback(() => {
     return Promise.all([
       getUserProfile()
@@ -49,12 +54,24 @@ export default function ProfileScreen() {
       getNotificationPreferences()
         .then((p) => { if (p) setPrefs(p); })
         .catch((err) => console.error("[profile] failed to load notification preferences:", err)),
+      getGithubStatus()
+        .then(setGithubStatus)
+        .catch((err) => console.error("[profile] failed to load github status:", err)),
     ]);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Refresh GitHub status when returning from the connect screen.
+  useFocusEffect(
+    useCallback(() => {
+      getGithubStatus()
+        .then(setGithubStatus)
+        .catch((err) => console.error("[profile] failed to refresh github status:", err));
+    }, []),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -102,6 +119,20 @@ export default function ProfileScreen() {
     } finally {
       router.replace("/");
       setSigningOut(false);
+    }
+  };
+
+  const handleGithubDisconnect = async () => {
+    setGithubBusy(true);
+    try {
+      await disconnectGithub();
+      setGithubStatus({ connected: false, username: null });
+      toast.success(t("settings.githubDisconnected"));
+    } catch (err) {
+      console.error("[profile] failed to disconnect github:", err);
+      toast.error(t("settings.githubDisconnectError"));
+    } finally {
+      setGithubBusy(false);
     }
   };
 
@@ -223,6 +254,37 @@ export default function ProfileScreen() {
         </Pressable>
       </GlassCard>
 
+      {/* Connected accounts */}
+      {githubStatus && (
+        <>
+          <Text style={styles.sectionTitle}>{t("settings.connectedAccountsTitle")}</Text>
+          <GlassCard style={styles.row}>
+            <View style={styles.iconBubble}>
+              <GitHubIcon size={18} color={brand.green[400]} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowValue}>{t("settings.githubTitle")}</Text>
+              <Text style={styles.hintText}>
+                {githubStatus.connected
+                  ? t("settings.githubConnectedAs", { username: githubStatus.username ?? "" })
+                  : t("settings.githubHint")}
+              </Text>
+            </View>
+            {githubBusy ? (
+              <ActivityIndicator color={brand.green[400]} />
+            ) : githubStatus.connected ? (
+              <Pressable onPress={handleGithubDisconnect} style={styles.githubDisconnectBtn}>
+                <Text style={styles.githubDisconnectBtnText}>{t("settings.githubDisconnect")}</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => router.push("/github-connect")} style={styles.githubConnectBtn}>
+                <Text style={styles.githubConnectBtnText}>{t("settings.githubConnect")}</Text>
+              </Pressable>
+            )}
+          </GlassCard>
+        </>
+      )}
+
       <Button
         label={t("common.signOut")}
         variant="ghost"
@@ -320,6 +382,29 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   langToggleText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: brand.white,
+  },
+  githubConnectBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: brand.amber[400],
+  },
+  githubConnectBtnText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: brand.dark.bg,
+  },
+  githubDisconnectBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  githubDisconnectBtnText: {
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: brand.white,

@@ -27,6 +27,9 @@ import { Button } from "../../../components/ui/Button";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { LessonMarkdown } from "../../../components/ui/LessonMarkdown";
 import { SkeletonLesson } from "../../../components/ui/Skeleton";
+import { CodePlayground } from "../../../components/learn/CodePlayground";
+import { QuizBlock } from "../../../components/learn/QuizBlock";
+import { VideoEmbed } from "../../../components/learn/VideoEmbed";
 import { CertClaimBanner } from "../../../components/certificates/CertClaimBanner";
 import { brand, fonts } from "../../../lib/theme/brand";
 import { useAuth } from "../../../hooks/useAuth";
@@ -67,6 +70,7 @@ export default function LessonPlayerScreen() {
   const [noteStatus, setNoteStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [busy, setBusy] = useState(false);
   const [showCertBanner, setShowCertBanner] = useState(false);
+  const [quizPassed, setQuizPassed] = useState(false);
 
   const ordered = useMemo(() => {
     if (!course) return [] as LocalizedLesson[];
@@ -123,7 +127,16 @@ export default function LessonPlayerScreen() {
     });
   }, [user, lesson?.id]);
 
+  useEffect(() => {
+    if (!lesson) return;
+    setQuizPassed(completedIds.has(lesson.id));
+  }, [lesson?.id, completedIds]);
+
   const isCompleted = lesson ? completedIds.has(lesson.id) : false;
+  const hasVideo = lesson?.lessonType === "video" && !!lesson.videoUrl;
+  const hasCode = lesson?.lessonType === "code" && !!lesson.codeLanguage;
+  const hasQuiz = lesson?.lessonType === "quiz" && (lesson?.quiz.length ?? 0) > 0;
+  const canProceed = !(hasQuiz && !quizPassed);
 
   const setProgress = async (status: LessonProgressStatus) => {
     if (!user || !dbCourse || !lesson) return;
@@ -188,7 +201,10 @@ export default function LessonPlayerScreen() {
   }
 
   const TypeIcon = LESSON_TYPE_ICONS[lesson.lessonType];
-  const showComingSoon = lesson.lessonType !== "text";
+  const showComingSoon =
+    (lesson.lessonType === "video" && !hasVideo) ||
+    (lesson.lessonType === "quiz" && !hasQuiz) ||
+    (lesson.lessonType === "code" && !hasCode);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingTop: insets.top + 12 }]}>
@@ -208,24 +224,38 @@ export default function LessonPlayerScreen() {
         <Text style={styles.duration}>{lesson.duration}</Text>
       </View>
 
-      {showComingSoon ? (
-        <GlassCard style={{ gap: 8 }}>
+      <GlassCard style={{ gap: 12 }}>
+        {showComingSoon && (
           <Text style={styles.comingSoon}>
             {t("learn.lessonTypeComingSoon", { type: t(`learn.lessonType${capitalize(lesson.lessonType)}`) })}
           </Text>
-          <LessonMarkdown content={lesson.content} />
-        </GlassCard>
-      ) : (
-        <GlassCard>
-          <LessonMarkdown content={lesson.content} />
-        </GlassCard>
-      )}
+        )}
+        <LessonMarkdown content={lesson.content} />
+        {hasVideo && <VideoEmbed url={lesson.videoUrl!} />}
+        {hasCode && (
+          <CodePlayground
+            codeLanguage={lesson.codeLanguage!}
+            codeStarter={lesson.codeStarter}
+            title={lesson.title}
+          />
+        )}
+        {hasQuiz && (
+          <QuizBlock
+            questions={lesson.quiz}
+            onPassed={() => {
+              setQuizPassed(true);
+              setProgress("completed");
+            }}
+          />
+        )}
+      </GlassCard>
 
       <Button
         label={isCompleted ? t("learn.markIncomplete") : t("learn.markComplete")}
         variant={isCompleted ? "ghost" : "primary"}
         onPress={() => setProgress(isCompleted ? "in_progress" : "completed")}
         loading={busy}
+        disabled={hasQuiz && !quizPassed}
       />
 
       <View style={styles.navRow}>
@@ -240,14 +270,18 @@ export default function LessonPlayerScreen() {
           </Text>
         </Pressable>
         <Pressable
-          style={[styles.navButton, !nextLesson && styles.navButtonDisabled]}
-          disabled={!nextLesson}
+          style={[styles.navButton, (!nextLesson || !canProceed) && styles.navButtonDisabled]}
+          disabled={!nextLesson || !canProceed}
           onPress={() => goToLesson(nextLesson)}
         >
-          <Text style={[styles.navButtonText, !nextLesson && styles.navButtonTextDisabled]}>
-            {nextLesson ? t("learn.nextLesson") : t("learn.finishCourse")}
+          <Text style={[styles.navButtonText, (!nextLesson || !canProceed) && styles.navButtonTextDisabled]}>
+            {!canProceed
+              ? t("learn.quizLockedShort")
+              : nextLesson
+                ? t("learn.nextLesson")
+                : t("learn.finishCourse")}
           </Text>
-          <ChevronRight color={nextLesson ? brand.white : brand.dark.muted} size={18} />
+          <ChevronRight color={nextLesson && canProceed ? brand.white : brand.dark.muted} size={18} />
         </Pressable>
       </View>
 

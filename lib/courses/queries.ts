@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CourseLevel, CourseLanguageMode, CourseStatus, DbCourse, DbCourseLesson, DbCourseModule, LessonType } from "./types";
+import type { CodeLanguage, CourseLevel, CourseLanguageMode, CourseStatus, DbCourse, DbCourseLesson, DbCourseModule, DbQuizQuestion, LessonType } from "./types";
 
 // Mirrors frontend/lib/courses/queries.ts (public reads only — admin
 // writes live in the web app). Mobile reads straight from Supabase; RLS
@@ -45,6 +45,21 @@ interface ModuleRow {
   course_lessons?: LessonRow[] | null;
 }
 
+interface QuizQuestionRow {
+  id: string;
+  lesson_id: string;
+  question_en: string;
+  question_fr: string;
+  options_en: string[] | null;
+  options_fr: string[] | null;
+  correct_index: number;
+  explanation_en: string;
+  explanation_fr: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface LessonRow {
   id: string;
   module_id: string;
@@ -55,12 +70,33 @@ interface LessonRow {
   content_en: string;
   content_fr: string;
   video_url: string | null;
+  code_language: string | null;
+  code_starter_en: string | null;
+  code_starter_fr: string | null;
   position: number;
   created_at: string;
   updated_at: string;
+  quiz_questions?: QuizQuestionRow[] | null;
 }
 
-const COURSE_TREE_SELECT = "*, course_modules(*, course_lessons(*))";
+const COURSE_TREE_SELECT = "*, course_modules(*, course_lessons(*, quiz_questions(*)))";
+
+function mapQuizQuestion(row: QuizQuestionRow): DbQuizQuestion {
+  return {
+    id: row.id,
+    lessonId: row.lesson_id,
+    questionEn: row.question_en,
+    questionFr: row.question_fr,
+    optionsEn: row.options_en ?? [],
+    optionsFr: row.options_fr ?? [],
+    correctIndex: row.correct_index,
+    explanationEn: row.explanation_en,
+    explanationFr: row.explanation_fr,
+    position: row.position,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 function mapLesson(row: LessonRow): DbCourseLesson {
   return {
@@ -73,9 +109,15 @@ function mapLesson(row: LessonRow): DbCourseLesson {
     contentEn: row.content_en,
     contentFr: row.content_fr,
     videoUrl: row.video_url,
+    codeLanguage: row.code_language as CodeLanguage | null,
+    codeStarterEn: row.code_starter_en,
+    codeStarterFr: row.code_starter_fr,
     position: row.position,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    quizQuestions: [...(row.quiz_questions ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map(mapQuizQuestion),
   };
 }
 

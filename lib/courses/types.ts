@@ -7,6 +7,22 @@ export type CourseLevel = "beginner" | "intermediate" | "advanced";
 export type CourseLanguageMode = "en" | "fr" | "both";
 export type CourseStatus = "draft" | "published" | "archived";
 export type LessonType = "video" | "text" | "code" | "quiz";
+export type CodeLanguage = "javascript" | "typescript" | "solidity" | "rust";
+
+export interface DbQuizQuestion {
+  id: string;
+  lessonId: string;
+  questionEn: string;
+  questionFr: string;
+  optionsEn: string[];
+  optionsFr: string[];
+  correctIndex: number;
+  explanationEn: string;
+  explanationFr: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface DbCourseLesson {
   id: string;
@@ -18,9 +34,13 @@ export interface DbCourseLesson {
   contentEn: string;
   contentFr: string;
   videoUrl: string | null;
+  codeLanguage: CodeLanguage | null;
+  codeStarterEn: string | null;
+  codeStarterFr: string | null;
   position: number;
   createdAt: string;
   updatedAt: string;
+  quizQuestions: DbQuizQuestion[];
 }
 
 export interface DbCourseModule {
@@ -65,6 +85,14 @@ export interface DbCourse {
 
 // ─── Localized view models — what the UI actually renders ────────────────────
 
+export interface LocalizedQuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
 export interface LocalizedLesson {
   id: string;
   title: string;
@@ -72,6 +100,9 @@ export interface LocalizedLesson {
   lessonType: LessonType;
   content: string;
   videoUrl: string | null;
+  codeLanguage: CodeLanguage | null;
+  codeStarter: string | null;
+  quiz: LocalizedQuizQuestion[];
 }
 
 export interface LocalizedModule {
@@ -140,6 +171,17 @@ export function localizeCourse(course: DbCourse, lang: Lang): LocalizedCourse {
             lessonType: lesson.lessonType,
             content: pickText(lang, lesson.contentEn, lesson.contentFr),
             videoUrl: lesson.videoUrl,
+            codeLanguage: lesson.codeLanguage,
+            codeStarter: pickText(lang, lesson.codeStarterEn ?? "", lesson.codeStarterFr ?? "") || null,
+            quiz: [...lesson.quizQuestions]
+              .sort((a, b) => a.position - b.position)
+              .map((q) => ({
+                id: q.id,
+                question: pickText(lang, q.questionEn, q.questionFr),
+                options: pickList(lang, q.optionsEn, q.optionsFr),
+                correctIndex: q.correctIndex,
+                explanation: pickText(lang, q.explanationEn, q.explanationFr),
+              })),
           })),
       })),
   };
