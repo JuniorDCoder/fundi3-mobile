@@ -1,12 +1,13 @@
 import { Dimensions, Linking, ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
 import { WebView } from "react-native-webview";
-import { ExternalLink } from "lucide-react-native";
+import { ExternalLink, CodeXml } from "lucide-react-native";
 import { brand, fonts, glass } from "../../lib/theme/brand";
 import { useLanguage } from "../../hooks/useLanguage";
 import { resolveAssetUrl } from "../../lib/utils/assets";
 import { slugify } from "../../lib/utils/slugify";
 import type { CodeLanguage } from "../../lib/courses/types";
 import { PushToGitHubButton } from "./PushToGitHubButton";
+import { Skeleton } from "../ui/Skeleton";
 
 const { width: screenWidth } = Dimensions.get("window");
 const contentWidth = screenWidth - 40; // 2 × 20px horizontal padding
@@ -69,6 +70,19 @@ function toBase64Utf8(input: string): string {
   return result;
 }
 
+/** Shimmer placeholder shown while the embedded code IDE (Remix, playground) loads. */
+function PlaygroundLoadingOverlay({ label }: { label: string }) {
+  return (
+    <View style={styles.loadingOverlay}>
+      <Skeleton style={StyleSheet.absoluteFill} />
+      <View style={styles.loadingBadge}>
+        <CodeXml color={brand.green[400]} size={18} />
+      </View>
+      <Text style={styles.loadingText}>{label}</Text>
+    </View>
+  );
+}
+
 interface CodePlaygroundProps {
   codeLanguage: CodeLanguage;
   codeStarter: string | null;
@@ -87,7 +101,14 @@ export function CodePlayground({ codeLanguage, codeStarter, title }: CodePlaygro
     return (
       <View style={{ gap: 12 }}>
         <View style={styles.wrapper}>
-          <WebView source={{ uri }} style={styles.webview} javaScriptEnabled domStorageEnabled />
+          <WebView
+            source={{ uri }}
+            style={styles.webview}
+            javaScriptEnabled
+            domStorageEnabled
+            startInLoadingState
+            renderLoading={() => <PlaygroundLoadingOverlay label={t("learn.remixLoading")} />}
+          />
         </View>
         <PushToGitHubButton
           getFiles={() => ({ [`contracts/${slug}.sol`]: code })}
@@ -162,6 +183,29 @@ const styles = StyleSheet.create({
     width: contentWidth,
     height: PLAYGROUND_HEIGHT,
     backgroundColor: brand.dark.bg,
+  },
+  loadingOverlay: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    backgroundColor: brand.dark.bg,
+  },
+  loadingBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(29,158,117,0.12)",
+  },
+  loadingText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: brand.white,
+    opacity: 0.75,
   },
   codeBlock: {
     maxHeight: 320,

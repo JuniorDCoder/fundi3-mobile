@@ -7,13 +7,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Search, X } from "lucide-react-native";
 import { CourseCard } from "../../../components/courses/CourseCard";
 import { Button } from "../../../components/ui/Button";
 import { SkeletonCourseList } from "../../../components/ui/Skeleton";
-import { brand, fonts } from "../../../lib/theme/brand";
+import { brand, fonts, glass } from "../../../lib/theme/brand";
 import { useCourses } from "../../../hooks/useCourses";
 import { useLanguage } from "../../../hooks/useLanguage";
 import { useAuth } from "../../../hooks/useAuth";
@@ -22,6 +24,16 @@ import { listUserEnrollments } from "../../../lib/courses/progress";
 import type { CourseLevel, LocalizedCourse } from "../../../lib/courses/types";
 
 type LevelFilter = CourseLevel | "all";
+
+/** Matches a course against a free-text search query (every word must appear somewhere in the course's text). */
+function matchesSearch(course: LocalizedCourse, query: string): boolean {
+  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+  const haystack = [course.title, course.description, course.longDescription, ...course.tags]
+    .join(" ")
+    .toLowerCase();
+  return terms.every((term) => haystack.includes(term));
+}
 
 interface FilterChipProps {
   label: string;
@@ -50,6 +62,7 @@ export default function CoursesScreen() {
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [freeOnly, setFreeOnly] = useState(false);
   const [africanOnly, setAfricanOnly] = useState(false);
+  const [query, setQuery] = useState("");
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
 
@@ -79,9 +92,10 @@ export default function CoursesScreen() {
       if (levelFilter !== "all" && c.level !== levelFilter) return false;
       if (freeOnly && !c.isFree) return false;
       if (africanOnly && !c.isAfrican) return false;
+      if (!matchesSearch(c, query)) return false;
       return true;
     });
-  }, [courses, levelFilter, freeOnly, africanOnly]);
+  }, [courses, levelFilter, freeOnly, africanOnly, query]);
 
   const hasActiveFilters = levelFilter !== "all" || freeOnly || africanOnly;
 
@@ -91,6 +105,26 @@ export default function CoursesScreen() {
         <Text style={styles.label}>{t("courses.catalog.label")}</Text>
         <Text style={styles.headline}>{t("courses.catalog.headline")}</Text>
         <Text style={styles.subtext}>{t("courses.catalog.subtext")}</Text>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchBar}>
+        <Search color={brand.dark.muted} size={16} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t("courses.search.placeholder")}
+          placeholderTextColor={brand.dark.muted}
+          style={styles.searchInput}
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+        />
+        {query.length > 0 && (
+          <Pressable onPress={() => setQuery("")} accessibilityLabel={t("courses.search.clear")}>
+            <X color={brand.dark.muted} size={16} />
+          </Pressable>
+        )}
       </View>
 
       {/* Filter chips */}
@@ -177,7 +211,9 @@ export default function CoursesScreen() {
             />
           )}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>{t("courses.empty")}</Text>
+            <Text style={styles.emptyText}>
+              {query.trim() ? t("courses.search.empty", { query: query.trim() }) : t("courses.empty")}
+            </Text>
           }
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -215,6 +251,25 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 14,
     color: brand.dark.muted,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: glass.surface,
+    borderWidth: 1,
+    borderColor: glass.border,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: brand.white,
+    padding: 0,
   },
   filterScroll: {
     marginHorizontal: -20,

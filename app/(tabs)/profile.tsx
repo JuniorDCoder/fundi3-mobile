@@ -3,7 +3,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
-import { Award, ChevronRight, GraduationCap, Globe, LogOut, Mail, Sparkles, FileBadge, User as UserIcon } from "lucide-react-native";
+import { Award, ChevronRight, GraduationCap, Globe, LogOut, Mail, Sparkles, FileBadge, User as UserIcon, Wallet } from "lucide-react-native";
 import { Button } from "../../components/ui/Button";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { Switch } from "../../components/ui/Switch";
@@ -164,6 +164,18 @@ export default function ProfileScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.rowValue}>{t("dashboard.certificates")}</Text>
+          </View>
+          <ChevronRight color={brand.dark.muted} size={18} />
+        </GlassCard>
+      </Pressable>
+
+      <Pressable onPress={() => router.push("/wallet")}>
+        <GlassCard style={styles.row}>
+          <View style={styles.iconBubble}>
+            <Wallet color={brand.green[400]} size={18} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowValue}>{t("dashboard.wallet")}</Text>
           </View>
           <ChevronRight color={brand.dark.muted} size={18} />
         </GlassCard>

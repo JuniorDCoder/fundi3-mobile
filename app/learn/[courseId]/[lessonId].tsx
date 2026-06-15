@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Pressable,
@@ -71,6 +71,10 @@ export default function LessonPlayerScreen() {
   const [busy, setBusy] = useState(false);
   const [showCertBanner, setShowCertBanner] = useState(false);
   const [quizPassed, setQuizPassed] = useState(false);
+  // Guards against rapid double-taps (or quiz + button) firing setProgress("completed")
+  // twice for the same lesson before `busy`/`completedIds` update — without this,
+  // multiple "Lesson completed" toasts can stack.
+  const completingRef = useRef<Set<string>>(new Set());
 
   const ordered = useMemo(() => {
     if (!course) return [] as LocalizedLesson[];
@@ -140,12 +144,21 @@ export default function LessonPlayerScreen() {
 
   const setProgress = async (status: LessonProgressStatus) => {
     if (!user || !dbCourse || !lesson) return;
+    if (status === "completed") {
+      if (isCompleted || completingRef.current.has(lesson.id)) return;
+      completingRef.current.add(lesson.id);
+    } else {
+      completingRef.current.delete(lesson.id);
+    }
     setBusy(true);
     try {
       await upsertLessonProgress(supabase, user.id, dbCourse.id, lesson.id, status);
       await refreshProgress();
       if (status === "completed") {
-        toast.success(t("toast.lessonCompleted"), { description: t("toast.lessonCompletedDesc") });
+        toast.success(t("toast.lessonCompleted"), {
+          id: `lesson-completed-${lesson.id}`,
+          description: t("toast.lessonCompletedDesc"),
+        });
         // Check if this was the last lesson
         const { data: progressData } = await supabase
           .from("lesson_progress")
@@ -159,6 +172,7 @@ export default function LessonPlayerScreen() {
         }
       }
     } finally {
+      completingRef.current.delete(lesson.id);
       setBusy(false);
     }
   };
