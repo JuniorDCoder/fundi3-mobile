@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { GlassCard } from "./GlassCard";
-import { glass } from "../../lib/theme/brand";
+import { brand, glass } from "../../lib/theme/brand";
 
 interface SkeletonProps {
   style?: ViewStyle | ViewStyle[];
@@ -189,6 +189,159 @@ export function SkeletonLesson() {
   );
 }
 
+// ─── Wallet ───────────────────────────────────────────────────────────────────
+
+/** Mirrors one transaction history row — icon chip, label/meta lines, amount. */
+function SkeletonTxRow() {
+  return (
+    <View style={composed.txRow}>
+      <Skeleton style={{ width: 36, height: 36, borderRadius: 12 }} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <Skeleton style={{ height: 12, width: "40%", borderRadius: 4 }} />
+        <Skeleton style={{ height: 10, width: "60%", borderRadius: 4 }} />
+      </View>
+      <Skeleton style={{ height: 12, width: 50, borderRadius: 4 }} />
+    </View>
+  );
+}
+
+/** Stack of skeleton transaction rows — drop-in placeholder while history loads. */
+export function SkeletonTxList({ count = 3 }: { count?: number }) {
+  return (
+    <View style={{ gap: 8 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <SkeletonTxRow key={i} />
+      ))}
+    </View>
+  );
+}
+
+/** Mirrors the wallet screen — address/QR card, balance card, tx history card. */
+export function SkeletonWallet() {
+  return (
+    <View style={{ gap: 16 }}>
+      <Skeleton style={{ height: 14, width: "85%", borderRadius: 4 }} />
+
+      <GlassCard style={{ gap: 14 }}>
+        <View style={composed.cardHeader}>
+          <View style={composed.rowLeft}>
+            <Skeleton style={{ width: 36, height: 36, borderRadius: 12 }} />
+            <Skeleton style={{ height: 14, width: 90, borderRadius: 4 }} />
+          </View>
+          <Skeleton style={{ height: 22, width: 80, borderRadius: 999 }} />
+        </View>
+        <View style={composed.qrWrap}>
+          <Skeleton style={{ width: 184, height: 184, borderRadius: 16 }} />
+        </View>
+        <Skeleton style={{ height: 46, width: "100%", borderRadius: 12 }} />
+        <View style={composed.rowEven}>
+          <Skeleton style={{ flex: 1, height: 44, borderRadius: 12 }} />
+          <Skeleton style={{ flex: 1, height: 44, borderRadius: 12 }} />
+        </View>
+      </GlassCard>
+
+      <GlassCard style={{ gap: 14 }}>
+        <Skeleton style={{ height: 13, width: 100, borderRadius: 4 }} />
+        <Skeleton style={{ height: 30, width: 140, borderRadius: 6 }} />
+        <View style={composed.rowEven}>
+          <Skeleton style={{ flex: 1, height: 48, borderRadius: 12 }} />
+          <Skeleton style={{ flex: 1, height: 48, borderRadius: 12 }} />
+        </View>
+      </GlassCard>
+
+      <GlassCard style={{ gap: 12 }}>
+        <View style={composed.rowLeft}>
+          <Skeleton style={{ width: 36, height: 36, borderRadius: 12 }} />
+          <Skeleton style={{ height: 14, width: 120, borderRadius: 4 }} />
+        </View>
+        <SkeletonTxList />
+      </GlassCard>
+    </View>
+  );
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+/** Mirrors one notification row — icon chip, title/body lines, timestamp. */
+function SkeletonNotificationRow() {
+  return (
+    <GlassCard style={composed.rowLeft}>
+      <Skeleton style={{ width: 38, height: 38, borderRadius: 12 }} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <Skeleton style={{ height: 13, width: "55%", borderRadius: 4 }} />
+        <Skeleton style={{ height: 11, width: "80%", borderRadius: 4 }} />
+      </View>
+    </GlassCard>
+  );
+}
+
+/** Stack of skeleton notification rows — drop-in placeholder while the list loads. */
+export function SkeletonNotificationList({ count = 5 }: { count?: number }) {
+  return (
+    <View style={{ gap: 10 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <SkeletonNotificationRow key={i} />
+      ))}
+    </View>
+  );
+}
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
+/** Mirrors the profile screen — info rows, name editor, notification toggles. */
+export function SkeletonProfile() {
+  return (
+    <View style={{ gap: 16 }}>
+      <GlassCard style={composed.rowLeft}>
+        <Skeleton style={{ width: 38, height: 38, borderRadius: 12 }} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Skeleton style={{ height: 11, width: "30%", borderRadius: 4 }} />
+          <Skeleton style={{ height: 15, width: "60%", borderRadius: 4 }} />
+        </View>
+      </GlassCard>
+
+      {Array.from({ length: 2 }).map((_, i) => (
+        <GlassCard key={`link-${i}`} style={composed.rowLeft}>
+          <Skeleton style={{ width: 38, height: 38, borderRadius: 12 }} />
+          <Skeleton style={{ flex: 1, height: 15, width: "50%", borderRadius: 4 }} />
+          <Skeleton style={{ width: 18, height: 18, borderRadius: 4 }} />
+        </GlassCard>
+      ))}
+
+      <GlassCard style={{ gap: 12 }}>
+        <View style={composed.rowLeft}>
+          <Skeleton style={{ width: 38, height: 38, borderRadius: 12 }} />
+          <Skeleton style={{ height: 12, width: "40%", borderRadius: 4 }} />
+        </View>
+        <Skeleton style={{ height: 48, width: "100%", borderRadius: 12 }} />
+        <Skeleton style={{ height: 11, width: "70%", borderRadius: 4 }} />
+        <Skeleton style={{ height: 44, width: "100%", borderRadius: 12 }} />
+      </GlassCard>
+
+      <Skeleton style={{ height: 16, width: 160, borderRadius: 5, marginTop: 8 }} />
+      {Array.from({ length: 4 }).map((_, i) => (
+        <GlassCard key={`pref-${i}`} style={composed.rowLeft}>
+          <Skeleton style={{ width: 38, height: 38, borderRadius: 12 }} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <Skeleton style={{ height: 14, width: "55%", borderRadius: 4 }} />
+            <Skeleton style={{ height: 11, width: "75%", borderRadius: 4 }} />
+          </View>
+          <Skeleton style={{ width: 44, height: 24, borderRadius: 999 }} />
+        </GlassCard>
+      ))}
+
+      <GlassCard style={composed.rowLeft}>
+        <Skeleton style={{ width: 38, height: 38, borderRadius: 12 }} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Skeleton style={{ height: 11, width: "30%", borderRadius: 4 }} />
+          <Skeleton style={{ height: 15, width: "40%", borderRadius: 4 }} />
+        </View>
+        <Skeleton style={{ width: 50, height: 36, borderRadius: 10 }} />
+      </GlassCard>
+    </View>
+  );
+}
+
 const composed = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -196,6 +349,33 @@ const composed = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     gap: 8,
+  },
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  rowEven: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  qrWrap: {
+    alignItems: "center",
+  },
+  txRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: brand.dark.border,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   statCard: {
     flex: 1,

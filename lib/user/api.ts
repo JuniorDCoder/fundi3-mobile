@@ -21,6 +21,7 @@ export interface NotificationPreferences {
   emailCourseCompleted: boolean;
   emailNewCourse: boolean;
   emailCertificatePdf: boolean;
+  emailWalletActivity: boolean;
 }
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences | null> {

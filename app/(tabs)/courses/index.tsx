@@ -29,7 +29,12 @@ type LevelFilter = CourseLevel | "all";
 function matchesSearch(course: LocalizedCourse, query: string): boolean {
   const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return true;
-  const haystack = [course.title, course.description, course.longDescription, ...course.tags]
+  const haystack = [
+    course.title,
+    course.description,
+    course.longDescription,
+    ...course.tags,
+  ]
     .join(" ")
     .toLowerCase();
   return terms.every((term) => haystack.includes(term));
@@ -47,7 +52,9 @@ function FilterChip({ label, active, onPress }: FilterChipProps) {
       onPress={onPress}
       style={[styles.chip, active && styles.chipActive]}
     >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -121,7 +128,10 @@ export default function CoursesScreen() {
           returnKeyType="search"
         />
         {query.length > 0 && (
-          <Pressable onPress={() => setQuery("")} accessibilityLabel={t("courses.search.clear")}>
+          <Pressable
+            onPress={() => setQuery("")}
+            accessibilityLabel={t("courses.search.clear")}
+          >
             <X color={brand.dark.muted} size={16} />
           </Pressable>
         )}
@@ -143,17 +153,25 @@ export default function CoursesScreen() {
         <FilterChip
           label={t("courses.badge.beginner")}
           active={levelFilter === "beginner"}
-          onPress={() => setLevelFilter(levelFilter === "beginner" ? "all" : "beginner")}
+          onPress={() =>
+            setLevelFilter(levelFilter === "beginner" ? "all" : "beginner")
+          }
         />
         <FilterChip
           label={t("courses.badge.intermediate")}
           active={levelFilter === "intermediate"}
-          onPress={() => setLevelFilter(levelFilter === "intermediate" ? "all" : "intermediate")}
+          onPress={() =>
+            setLevelFilter(
+              levelFilter === "intermediate" ? "all" : "intermediate",
+            )
+          }
         />
         <FilterChip
           label={t("courses.badge.advanced")}
           active={levelFilter === "advanced"}
-          onPress={() => setLevelFilter(levelFilter === "advanced" ? "all" : "advanced")}
+          onPress={() =>
+            setLevelFilter(levelFilter === "advanced" ? "all" : "advanced")
+          }
         />
 
         <View style={styles.chipDivider} />
@@ -181,7 +199,11 @@ export default function CoursesScreen() {
           </Text>
           {hasActiveFilters && (
             <Pressable
-              onPress={() => { setLevelFilter("all"); setFreeOnly(false); setAfricanOnly(false); }}
+              onPress={() => {
+                setLevelFilter("all");
+                setFreeOnly(false);
+                setAfricanOnly(false);
+              }}
             >
               <Text style={styles.clearText}>{t("courses.filter.clear")}</Text>
             </Pressable>
@@ -190,13 +212,20 @@ export default function CoursesScreen() {
       )}
 
       {loading ? (
-        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
           <SkeletonCourseList count={4} />
         </ScrollView>
       ) : error ? (
         <View style={styles.centerBlock}>
           <Text style={styles.errorText}>{t("common.error")}</Text>
-          <Button label={t("common.retry")} variant="ghost" onPress={() => router.replace("/(tabs)/courses")} />
+          <Button
+            label={t("common.retry")}
+            variant="ghost"
+            onPress={() => router.replace("/(tabs)/courses")}
+          />
         </View>
       ) : (
         <FlatList
@@ -212,12 +241,18 @@ export default function CoursesScreen() {
           )}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              {query.trim() ? t("courses.search.empty", { query: query.trim() }) : t("courses.empty")}
+              {query.trim()
+                ? t("courses.search.empty", { query: query.trim() })
+                : t("courses.empty")}
             </Text>
           }
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={brand.green[400]} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={brand.green[400]}
+            />
           }
         />
       )}

@@ -207,6 +207,7 @@ export const fr: Record<string, string> = {
   "dashboard.certificates": "Mes certificats",
   "dashboard.viewAllCerts": "Voir tout",
   "dashboard.wallet": "Mon portefeuille",
+  "dashboard.notifications": "Notifications",
 
   // Portefeuille
   "wallet.title": "Mon portefeuille",
@@ -303,6 +304,8 @@ export const fr: Record<string, string> = {
   "settings.notifNewCourseHint": "Recevez un email quand un nouveau cours est publié.",
   "settings.notifCertificatePdf": "PDF du certificat",
   "settings.notifCertificatePdfHint": "Recevez le PDF de votre certificat par email.",
+  "settings.notifWalletActivity": "Activité du portefeuille",
+  "settings.notifWalletActivityHint": "Recevez un email quand vous envoyez ou recevez des SOL.",
   "settings.saveError": "Impossible d'enregistrer vos préférences",
   "settings.connectedAccountsTitle": "Comptes connectés",
   "settings.githubTitle": "GitHub",
@@ -383,4 +386,11 @@ export const fr: Record<string, string> = {
   "cert.linkCopied": "Lien copié !",
   "cert.downloadError": "Impossible de télécharger le certificat",
   "cert.previewClose": "Fermer",
+
+  // Notifications
+  "notifications.title": "Notifications",
+  "notifications.empty": "Aucune notification pour l'instant",
+  "notifications.emptyBody": "Nous vous informerons ici lorsque vous envoyez ou recevez des SOL, ou obtenez un certificat.",
+  "notifications.markAllRead": "Tout marquer comme lu",
+  "notifications.loadError": "Impossible de charger les notifications",
 };

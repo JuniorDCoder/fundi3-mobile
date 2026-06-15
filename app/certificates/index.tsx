@@ -28,7 +28,7 @@ export default function CertificatesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, lang } = useLanguage();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [certs, setCerts] = useState<CertificateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -38,15 +38,18 @@ export default function CertificatesScreen() {
   const appUrl = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
   const load = useCallback(() => {
-    if (!user) { setLoading(false); return Promise.resolve(); }
+    if (!user) return Promise.resolve();
     return getCertificates()
       .then(setCerts)
       .catch(() => setCerts([]));
   }, [user]);
 
+  // Wait for the session to be restored before deciding there's nothing to
+  // load — otherwise the empty state flashes before `user` is populated.
   useEffect(() => {
+    if (authLoading) return;
     load().finally(() => setLoading(false));
-  }, [load]);
+  }, [authLoading, load]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -35,7 +35,7 @@ const ERROR_KEYS: Record<string, string> = {
 };
 
 export function SendModal({ visible, onClose, availableSol, onSuccess }: Props) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -83,7 +83,7 @@ export function SendModal({ visible, onClose, availableSol, onSuccess }: Props) 
 
     setLoading(true);
     try {
-      const res = await sendTransfer(recipient.trim(), amountSol, password);
+      const res = await sendTransfer(recipient.trim(), amountSol, password, lang);
       setResult(res);
       onSuccess();
     } catch (err) {

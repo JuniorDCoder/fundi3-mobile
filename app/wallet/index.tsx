@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Linking,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
 import QRCode from "react-native-qrcode-svg";
@@ -24,13 +32,21 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react-native";
 import { GlassCard } from "../../components/ui/GlassCard";
+import { SkeletonTxList, SkeletonWallet } from "../../components/ui/Skeleton";
 import { ExportKeyModal } from "../../components/wallet/ExportKeyModal";
 import { SendModal } from "../../components/wallet/SendModal";
 import { ReceiveModal } from "../../components/wallet/ReceiveModal";
 import { brand, fonts } from "../../lib/theme/brand";
 import { useAuth } from "../../hooks/useAuth";
 import { useLanguage } from "../../hooks/useLanguage";
-import { getTransactions, getWallet, requestAirdrop, type WalletInfo, type WalletTransaction } from "../../lib/wallet/api";
+import { useMinimumLoading } from "../../hooks/useMinimumLoading";
+import {
+  getTransactions,
+  getWallet,
+  requestAirdrop,
+  type WalletInfo,
+  type WalletTransaction,
+} from "../../lib/wallet/api";
 
 const NETWORK_LABEL_KEY: Record<WalletInfo["network"], string> = {
   devnet: "wallet.networkDevnet",
@@ -45,17 +61,20 @@ function truncateAddress(address: string) {
 
 function formatDate(blockTime: number | null, lang: "en" | "fr") {
   if (!blockTime) return "";
-  return new Date(blockTime * 1000).toLocaleString(lang === "fr" ? "fr-FR" : "en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return new Date(blockTime * 1000).toLocaleString(
+    lang === "fr" ? "fr-FR" : "en-US",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    },
+  );
 }
 
 export default function WalletScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, lang } = useLanguage();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,8 +86,14 @@ export default function WalletScreen() {
   const [sendOpen, setSendOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
 
-  const [transactions, setTransactions] = useState<WalletTransaction[] | null>(null);
+  const [transactions, setTransactions] = useState<WalletTransaction[] | null>(
+    null,
+  );
   const [txLoading, setTxLoading] = useState(true);
+
+  // Enforce a minimum skeleton display so warm/cached loads don't flash past.
+  const showSkeleton = useMinimumLoading(loading);
+  const showTxSkeleton = useMinimumLoading(txLoading);
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +115,9 @@ export default function WalletScreen() {
   }, []);
 
   useEffect(() => {
+    // Wait for the session to be restored before deciding there's nothing to
+    // load — otherwise the empty/error state flashes before `user` is populated.
+    if (authLoading) return;
     if (!user) {
       setLoading(false);
       setTxLoading(false);
@@ -97,7 +125,7 @@ export default function WalletScreen() {
     }
     load().finally(() => setLoading(false));
     loadTransactions().finally(() => setTxLoading(false));
-  }, [user, load, loadTransactions]);
+  }, [authLoading, user, load, loadTransactions]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -129,12 +157,17 @@ export default function WalletScreen() {
     setTimeout(() => onRefresh(), 1500);
   };
 
-  const networkColor = wallet?.network === "devnet" ? brand.amber[400] : brand.green[400];
+  const networkColor =
+    wallet?.network === "devnet" ? brand.amber[400] : brand.green[400];
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={8}
+        >
           <ChevronLeft size={22} color={brand.dark.muted} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("wallet.title")}</Text>
@@ -143,12 +176,16 @@ export default function WalletScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={brand.green[400]} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={brand.green[400]}
+          />
+        }
       >
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator color={brand.green[400]} />
-          </View>
+        {showSkeleton ? (
+          <SkeletonWallet />
         ) : error || !wallet ? (
           <GlassCard style={styles.errorCard}>
             <Text style={styles.errorText}>{t("wallet.error")}</Text>
@@ -164,10 +201,22 @@ export default function WalletScreen() {
                   <View style={styles.iconBubbleGreen}>
                     <WalletIcon color={brand.green[400]} size={16} />
                   </View>
-                  <Text style={styles.cardTitle}>{t("wallet.addressLabel")}</Text>
+                  <Text style={styles.cardTitle}>
+                    {t("wallet.addressLabel")}
+                  </Text>
                 </View>
-                <View style={[styles.networkBadge, { backgroundColor: `${networkColor}1F` }]}>
-                  <View style={[styles.networkDot, { backgroundColor: networkColor }]} />
+                <View
+                  style={[
+                    styles.networkBadge,
+                    { backgroundColor: `${networkColor}1F` },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.networkDot,
+                      { backgroundColor: networkColor },
+                    ]}
+                  />
                   <Text style={[styles.networkText, { color: networkColor }]}>
                     {t(NETWORK_LABEL_KEY[wallet.network])}
                   </Text>
@@ -176,13 +225,20 @@ export default function WalletScreen() {
 
               <View style={styles.qrWrap}>
                 <View style={styles.qrBox}>
-                  <QRCode value={wallet.address} size={160} color={brand.dark.bg} backgroundColor={brand.white} />
+                  <QRCode
+                    value={wallet.address}
+                    size={160}
+                    color={brand.dark.bg}
+                    backgroundColor={brand.white}
+                  />
                 </View>
               </View>
               <Text style={styles.qrLabel}>{t("wallet.qrLabel")}</Text>
 
               <View style={styles.addressBox}>
-                <Text style={styles.addressText}>{truncateAddress(wallet.address)}</Text>
+                <Text style={styles.addressText}>
+                  {truncateAddress(wallet.address)}
+                </Text>
               </View>
 
               <View style={styles.buttonRow}>
@@ -192,13 +248,23 @@ export default function WalletScreen() {
                   ) : (
                     <Copy size={14} color={brand.green[400]} />
                   )}
-                  <Text style={[styles.copyBtnText, copied && styles.copyBtnTextCopied]}>
+                  <Text
+                    style={[
+                      styles.copyBtnText,
+                      copied && styles.copyBtnTextCopied,
+                    ]}
+                  >
                     {copied ? t("wallet.copied") : t("wallet.copy")}
                   </Text>
                 </Pressable>
-                <Pressable onPress={() => Linking.openURL(wallet.explorerUrl)} style={styles.explorerBtn}>
+                <Pressable
+                  onPress={() => Linking.openURL(wallet.explorerUrl)}
+                  style={styles.explorerBtn}
+                >
                   <ExternalLink size={14} color={brand.dark.muted} />
-                  <Text style={styles.explorerBtnText}>{t("wallet.viewExplorer")}</Text>
+                  <Text style={styles.explorerBtnText}>
+                    {t("wallet.viewExplorer")}
+                  </Text>
                 </Pressable>
               </View>
 
@@ -209,39 +275,61 @@ export default function WalletScreen() {
             <GlassCard style={styles.card}>
               <View style={styles.balanceHeader}>
                 <Text style={styles.cardLabel}>{t("wallet.balanceLabel")}</Text>
-                <Pressable onPress={onRefresh} disabled={refreshing} hitSlop={8}>
+                <Pressable
+                  onPress={onRefresh}
+                  disabled={refreshing}
+                  hitSlop={8}
+                >
                   <RefreshCw size={14} color={brand.dark.muted} />
                 </Pressable>
               </View>
               {wallet.balanceSol !== null ? (
                 <Text style={styles.balanceValue}>
-                  {wallet.balanceSol.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                  {wallet.balanceSol.toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}
                   <Text style={styles.balanceUnit}> SOL</Text>
                 </Text>
               ) : (
-                <Text style={styles.balanceUnavailable}>{t("wallet.balanceUnavailable")}</Text>
+                <Text style={styles.balanceUnavailable}>
+                  {t("wallet.balanceUnavailable")}
+                </Text>
               )}
 
               <View style={styles.sendReceiveRow}>
-                <Pressable onPress={() => setSendOpen(true)} style={styles.sendBtn}>
+                <Pressable
+                  onPress={() => setSendOpen(true)}
+                  style={styles.sendBtn}
+                >
                   <SendIcon size={15} color={brand.white} />
                   <Text style={styles.sendBtnText}>{t("wallet.send")}</Text>
                 </Pressable>
-                <Pressable onPress={() => setReceiveOpen(true)} style={styles.receiveBtn}>
+                <Pressable
+                  onPress={() => setReceiveOpen(true)}
+                  style={styles.receiveBtn}
+                >
                   <QrCode size={15} color={brand.white} />
-                  <Text style={styles.receiveBtnText}>{t("wallet.receive")}</Text>
+                  <Text style={styles.receiveBtnText}>
+                    {t("wallet.receive")}
+                  </Text>
                 </Pressable>
               </View>
 
               {wallet.network === "devnet" && (
-                <Pressable onPress={handleAirdrop} disabled={airdropping} style={styles.airdropBtn}>
+                <Pressable
+                  onPress={handleAirdrop}
+                  disabled={airdropping}
+                  style={styles.airdropBtn}
+                >
                   {airdropping ? (
                     <Loader2 size={15} color={brand.amber[400]} />
                   ) : (
                     <Coins size={15} color={brand.amber[400]} />
                   )}
                   <Text style={styles.airdropBtnText}>
-                    {airdropping ? t("wallet.airdropLoading") : t("wallet.airdropButton")}
+                    {airdropping
+                      ? t("wallet.airdropLoading")
+                      : t("wallet.airdropButton")}
                   </Text>
                 </Pressable>
               )}
@@ -253,13 +341,13 @@ export default function WalletScreen() {
                 <View style={styles.iconBubbleGreen}>
                   <History color={brand.green[400]} size={16} />
                 </View>
-                <Text style={styles.cardTitle}>{t("wallet.txHistoryTitle")}</Text>
+                <Text style={styles.cardTitle}>
+                  {t("wallet.txHistoryTitle")}
+                </Text>
               </View>
 
-              {txLoading ? (
-                <View style={styles.txLoading}>
-                  <ActivityIndicator color={brand.green[400]} />
-                </View>
+              {showTxSkeleton ? (
+                <SkeletonTxList />
               ) : !transactions || transactions.length === 0 ? (
                 <Text style={styles.hintText}>{t("wallet.txEmpty")}</Text>
               ) : (
@@ -282,7 +370,13 @@ export default function WalletScreen() {
                         : isOut
                           ? "rgba(239,159,39,0.12)"
                           : "rgba(255,255,255,0.05)";
-                    const Icon = isCertificate ? Award : isIn ? ArrowDownLeft : isOut ? ArrowUpRight : ArrowLeftRight;
+                    const Icon = isCertificate
+                      ? Award
+                      : isIn
+                        ? ArrowDownLeft
+                        : isOut
+                          ? ArrowUpRight
+                          : ArrowLeftRight;
                     const label = isCertificate
                       ? t("wallet.txCertificate")
                       : isIn
@@ -292,8 +386,12 @@ export default function WalletScreen() {
                           : t("wallet.txOther");
                     const counterpartyLabel = txItem.counterparty
                       ? isIn
-                        ? t("wallet.txFrom", { address: truncateAddress(txItem.counterparty) })
-                        : t("wallet.txTo", { address: truncateAddress(txItem.counterparty) })
+                        ? t("wallet.txFrom", {
+                            address: truncateAddress(txItem.counterparty),
+                          })
+                        : t("wallet.txTo", {
+                            address: truncateAddress(txItem.counterparty),
+                          })
                       : null;
 
                     return (
@@ -302,7 +400,12 @@ export default function WalletScreen() {
                         onPress={() => Linking.openURL(txItem.explorerUrl)}
                         style={styles.txRow}
                       >
-                        <View style={[styles.txIconBubble, { backgroundColor: iconBg }]}>
+                        <View
+                          style={[
+                            styles.txIconBubble,
+                            { backgroundColor: iconBg },
+                          ]}
+                        >
                           <Icon size={16} color={iconColor} />
                         </View>
                         <View style={{ flex: 1 }}>
@@ -310,24 +413,41 @@ export default function WalletScreen() {
                             <Text style={styles.txLabel}>{label}</Text>
                             {txItem.status === "failed" && (
                               <View style={styles.txFailedBadge}>
-                                <Text style={styles.txFailedText}>{t("wallet.txFailed")}</Text>
+                                <Text style={styles.txFailedText}>
+                                  {t("wallet.txFailed")}
+                                </Text>
                               </View>
                             )}
                           </View>
                           {counterpartyLabel && (
-                            <Text style={styles.txCounterparty} numberOfLines={1}>
+                            <Text
+                              style={styles.txCounterparty}
+                              numberOfLines={1}
+                            >
                               {counterpartyLabel}
                             </Text>
                           )}
                         </View>
                         <View style={styles.txRight}>
                           {txItem.changeSol !== null && (
-                            <Text style={[styles.txAmount, { color: isIn ? brand.green[400] : brand.white }]}>
+                            <Text
+                              style={[
+                                styles.txAmount,
+                                {
+                                  color: isIn ? brand.green[400] : brand.white,
+                                },
+                              ]}
+                            >
                               {txItem.changeSol > 0 ? "+" : ""}
-                              {txItem.changeSol.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL
+                              {txItem.changeSol.toLocaleString(undefined, {
+                                maximumFractionDigits: 6,
+                              })}{" "}
+                              SOL
                             </Text>
                           )}
-                          <Text style={styles.txDate}>{formatDate(txItem.blockTime, lang)}</Text>
+                          <Text style={styles.txDate}>
+                            {formatDate(txItem.blockTime, lang)}
+                          </Text>
                         </View>
                       </Pressable>
                     );
@@ -343,27 +463,43 @@ export default function WalletScreen() {
                   <KeyRound color={brand.amber[400]} size={16} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{t("wallet.exportTitle")}</Text>
+                  <Text style={styles.cardTitle}>
+                    {t("wallet.exportTitle")}
+                  </Text>
                   <Text style={styles.hintText}>{t("wallet.exportDesc")}</Text>
                 </View>
               </View>
-              <Pressable onPress={() => setExportOpen(true)} style={styles.exportBtn}>
+              <Pressable
+                onPress={() => setExportOpen(true)}
+                style={styles.exportBtn}
+              >
                 <KeyRound size={14} color={brand.white} />
-                <Text style={styles.exportBtnText}>{t("wallet.exportButton")}</Text>
+                <Text style={styles.exportBtnText}>
+                  {t("wallet.exportButton")}
+                </Text>
               </Pressable>
             </GlassCard>
           </>
         )}
       </ScrollView>
 
-      <ExportKeyModal visible={exportOpen} onClose={() => setExportOpen(false)} />
+      <ExportKeyModal
+        visible={exportOpen}
+        onClose={() => setExportOpen(false)}
+      />
       <SendModal
         visible={sendOpen}
         onClose={() => setSendOpen(false)}
         availableSol={wallet?.balanceSol ?? null}
         onSuccess={handleSendSuccess}
       />
-      {wallet && <ReceiveModal visible={receiveOpen} onClose={() => setReceiveOpen(false)} address={wallet.address} />}
+      {wallet && (
+        <ReceiveModal
+          visible={receiveOpen}
+          onClose={() => setReceiveOpen(false)}
+          address={wallet.address}
+        />
+      )}
     </View>
   );
 }
@@ -399,10 +535,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     paddingBottom: 48,
-  },
-  loadingContainer: {
-    paddingTop: 80,
-    alignItems: "center",
   },
   errorCard: {
     alignItems: "center",
@@ -616,10 +748,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: brand.amber[400],
-  },
-  txLoading: {
-    paddingVertical: 20,
-    alignItems: "center",
   },
   txRow: {
     flexDirection: "row",

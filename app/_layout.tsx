@@ -13,11 +13,16 @@ import { useFonts as useInter, Inter_400Regular, Inter_500Medium } from "@expo-g
 import { useFonts as useJetBrainsMono, JetBrainsMono_400Regular } from "@expo-google-fonts/jetbrains-mono";
 import { Toaster } from "sonner-native";
 import { brand } from "../lib/theme/brand";
+import { useAuth } from "../hooks/useAuth";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 export default function RootLayout() {
   const [spaceGroteskLoaded] = useSpaceGrotesk({ SpaceGrotesk_500Medium, SpaceGrotesk_600SemiBold });
   const [interLoaded] = useInter({ Inter_400Regular, Inter_500Medium });
   const [jetBrainsMonoLoaded] = useJetBrainsMono({ JetBrainsMono_400Regular });
+
+  const { user } = useAuth();
+  usePushNotifications(user?.id ?? null);
 
   const fontsLoaded = spaceGroteskLoaded && interLoaded && jetBrainsMonoLoaded;
 

@@ -3,9 +3,10 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
-import { Award, ChevronRight, GraduationCap, Globe, LogOut, Mail, Sparkles, FileBadge, User as UserIcon, Wallet } from "lucide-react-native";
+import { ArrowLeftRight, Award, Bell, ChevronRight, GraduationCap, Globe, LogOut, Mail, Sparkles, FileBadge, User as UserIcon, Wallet } from "lucide-react-native";
 import { Button } from "../../components/ui/Button";
 import { GlassCard } from "../../components/ui/GlassCard";
+import { SkeletonProfile } from "../../components/ui/Skeleton";
 import { Switch } from "../../components/ui/Switch";
 import { GitHubIcon } from "../../components/ui/icons";
 import { brand, fonts, glass } from "../../lib/theme/brand";
@@ -18,19 +19,22 @@ import {
   type NotificationPreferences,
 } from "../../lib/user/api";
 import { getGithubStatus, disconnectGithub, type GithubStatus } from "../../lib/github/api";
+import { getNotifications } from "../../lib/notifications/api";
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   emailCourseCompleted: true,
   emailNewCourse: true,
   emailCertificatePdf: true,
+  emailWalletActivity: true,
 };
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { lang, toggleLanguage, t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [signingOut, setSigningOut] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [displayName, setDisplayName] = useState("");
   const [initialName, setInitialName] = useState("");
@@ -41,6 +45,8 @@ export default function ProfileScreen() {
 
   const [githubStatus, setGithubStatus] = useState<GithubStatus | null>(null);
   const [githubBusy, setGithubBusy] = useState(false);
+
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const load = useCallback(() => {
     return Promise.all([
@@ -57,12 +63,18 @@ export default function ProfileScreen() {
       getGithubStatus()
         .then(setGithubStatus)
         .catch((err) => console.error("[profile] failed to load github status:", err)),
+      getNotifications()
+        .then((res) => setUnreadNotifications(res.unreadCount))
+        .catch((err) => console.error("[profile] failed to load notifications:", err)),
     ]);
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    // Wait for the session to be restored before fetching — otherwise the
+    // requests fire without a token and the screen settles on empty state.
+    if (authLoading) return;
+    load().finally(() => setLoading(false));
+  }, [authLoading, load]);
 
   // Refresh GitHub status when returning from the connect screen.
   useFocusEffect(
@@ -147,6 +159,10 @@ export default function ProfileScreen() {
     >
       <Text style={styles.title}>{t("nav.profile")}</Text>
 
+      {loading ? (
+        <SkeletonProfile />
+      ) : (
+        <>
       <GlassCard style={styles.row}>
         <View style={styles.iconBubble}>
           <Mail color={brand.green[400]} size={18} />
@@ -156,6 +172,23 @@ export default function ProfileScreen() {
           <Text style={styles.rowValue}>{user?.email ?? ""}</Text>
         </View>
       </GlassCard>
+
+      <Pressable onPress={() => router.push("/notifications")}>
+        <GlassCard style={styles.row}>
+          <View style={styles.iconBubble}>
+            <Bell color={brand.green[400]} size={18} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowValue}>{t("dashboard.notifications")}</Text>
+          </View>
+          {unreadNotifications > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unreadNotifications > 9 ? "9+" : unreadNotifications}</Text>
+            </View>
+          )}
+          <ChevronRight color={brand.dark.muted} size={18} />
+        </GlassCard>
+      </Pressable>
 
       <Pressable onPress={() => router.push("/certificates")}>
         <GlassCard style={styles.row}>
@@ -255,6 +288,20 @@ export default function ProfileScreen() {
 
       <GlassCard style={styles.row}>
         <View style={styles.iconBubble}>
+          <ArrowLeftRight color={brand.green[400]} size={18} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.rowValue}>{t("settings.notifWalletActivity")}</Text>
+          <Text style={styles.hintText}>{t("settings.notifWalletActivityHint")}</Text>
+        </View>
+        <Switch
+          value={prefs.emailWalletActivity}
+          onValueChange={(value) => handleTogglePref("emailWalletActivity", value)}
+        />
+      </GlassCard>
+
+      <GlassCard style={styles.row}>
+        <View style={styles.iconBubble}>
           <Globe color={brand.green[400]} size={18} />
         </View>
         <View style={{ flex: 1 }}>
@@ -308,6 +355,8 @@ export default function ProfileScreen() {
         <LogOut color={brand.dark.muted} size={14} />
         <Text style={styles.signOutHint}>{t("dashboard.signOut")}</Text>
       </View>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -348,6 +397,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(239,159,39,0.12)",
+  },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: brand.amber[400],
+  },
+  unreadBadgeText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: brand.dark.bg,
   },
   rowLabel: {
     fontFamily: fonts.body,

@@ -82,13 +82,18 @@ export interface SendResult {
   explorerUrl: string;
 }
 
-export async function sendTransfer(recipient: string, amountSol: number, password: string): Promise<SendResult> {
+export async function sendTransfer(
+  recipient: string,
+  amountSol: number,
+  password: string,
+  lang: "en" | "fr",
+): Promise<SendResult> {
   const base = await apiUrl();
   const headers = await authHeaders();
   const res = await fetch(`${base}/api/wallet/send`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ recipient, amountSol, password }),
+    body: JSON.stringify({ recipient, amountSol, password, lang }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? "Send failed");
